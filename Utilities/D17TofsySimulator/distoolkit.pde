@@ -69,7 +69,7 @@ class Broadcast {
 }
 
 // Receive UDP data, and write int o PG.
-class BroadcastReceiver {
+public class BroadcastReceiver {
   Object receiveHandler;
   PixelMap pixelMap;
   String ip;
@@ -93,8 +93,8 @@ class BroadcastReceiver {
     bufferSize =  3 * nPixels + 1;
     rx_buffer = new byte[bufferSize];
 
-    udp = new UDP(receiveHandler, port);
-    udp.setReceiveHandler("broadcastReceiveHandler");
+    udp = new UDP(this, port);
+    //udp.setReceiveHandler("broadcastReceiveHandler");
     udp.log(false);
     udp.listen(true);
   }
@@ -132,9 +132,9 @@ class BroadcastReceiver {
 }
 
 // Hander for receive UDP data.
-void broadcastReceiveHandler(byte[] data, String ip, int port) {
-  broadcastReceiver.receive(data, ip, port);
-}
+//void broadcastReceiveHandler(byte[] data, String ip, int port) {
+//  broadcastReceiver.receive(data, ip, port);
+//}
 class DisplayableStructure extends Displayable {
   PixelMap pixelMap;
   PGraphics pixelMapPG;

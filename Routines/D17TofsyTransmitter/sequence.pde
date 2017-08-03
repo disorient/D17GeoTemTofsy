@@ -17,5 +17,6 @@ public void createSequence() {
 
   //mp.seq(new PushCel(cel0, new StripSweep(pixelMap, allStructures)));
   mp.seq(new PushCel(cel0, new Plasma(pixelMap, allStructures)));
+  //mp.seq(new PushCel(cel0, new BoxTest(pixelMap, allStructures)));
   mp.seq(new Wait(5*fpm));
 }

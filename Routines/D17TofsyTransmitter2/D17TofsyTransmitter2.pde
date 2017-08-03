@@ -1,13 +1,6 @@
 import hypermedia.net.*;
-
 import moonpaper.*;
 import moonpaper.opcodes.*;
-
-import hypermedia.net.*;
-import moonpaper.*;
-import moonpaper.opcodes.*;
-
-public static final String TOFSY_JSON = "../../Data/tofsy.json";
 
 // Turn on frame capture
 boolean captureFrames = false;
@@ -21,11 +14,15 @@ int port = 6100;
 // Set FrameRate
 int fps = 60;        // Frames-per-second
 
-// PixelMap and Structures
+public static final String TOFSY_JSON = "../../Data/tofsy.json";
 
+// PixelMap and Structures
 Structure tofsy;
 PixelMap pixelMap;  // PixelMap is the master canvas which all animations will draw to
 Moonpaper mp;
+
+// Animation
+StripSweep stripSweep;
 
 void verifySize() {
   if (width != pixelMap.pg.width || height != pixelMap.pg.height) {
@@ -39,7 +36,7 @@ void setupPixelMap() {
   // Setup Virtual LED Installation  
   pixelMap = new PixelMap();  // Create 2D PixelMap from strips
 
-  // Create Tofsy structure
+  // Create teatro structure
   tofsy = new Structure(pixelMap, TOFSY_JSON);
 
   // Once all structures are loaded, finalize the pixelMap
@@ -47,17 +44,14 @@ void setupPixelMap() {
   verifySize();
 }
 
-void settings() {
-  size(120, 80, P2D);
-}
-
 void setup() {
+  size(75, 80, P3D);
   frameRate(fps);
-    
+  
   // Load in structures and create master PixelMap
   setupPixelMap();
 
-  // Setup Brmapapping
+  // Setup Broadcasting
   broadcast = new Broadcast(this, pixelMap, ip, port);
   broadcast.pg = g;
 
@@ -67,7 +61,7 @@ void setup() {
 
 void draw() {
   background(0);
-  
+
   // Update and display animation
   mp.update();
   mp.display();

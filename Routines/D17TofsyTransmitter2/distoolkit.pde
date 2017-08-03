@@ -53,7 +53,6 @@ class Broadcast {
     }
     }
     catch (Exception e) {
-      println(e);
       println("frame: " + frameCount + "  Broadcast.update() frame dropped");
     }
     send();
@@ -155,7 +154,7 @@ class DisplayableStrips extends DisplayableStructure {
   void setup() {
     rowOffset = structure.rowOffset;
     strips = structure.strips;
-    pg = createGraphics(structure.getMaxWidth(), strips.size(), P2D);
+    pg = createGraphics(structure.getMaxWidth(), strips.size());
   }
 
   void display() {
@@ -226,9 +225,6 @@ class DisplayableLEDs extends DisplayableStrips {
     
     pg.updatePixels();
     pg.endDraw();
-  }
-  
-  void preview(PGraphics ppg) {
   }
   
   void clear() {
@@ -362,9 +358,9 @@ class PixelMap extends Displayable {
       }
     }
 
-    pg = createGraphics(columns, rows, P2D);
+    pg = createGraphics(columns, rows);
     pg.beginDraw();
-    pg.background(255, 255, 0);
+    pg.background(255, 0, 0);
     pg.endDraw();
     nLights = leds.size();
   }
