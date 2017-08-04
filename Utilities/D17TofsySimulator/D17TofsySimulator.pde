@@ -10,17 +10,17 @@ public static final String TEATRO_MODEL = "../../Data/teatro.obj";
 public static final String TOFSY_MODEL = "../../Data/tofsy.obj";
 public static final String TOFSY_JSON = "../../Data/tofsy.json";
 
+public static final String START_HOST = "localhost";
+public static final int START_PORT = 6454;
+
 float lightSize = 4;  // Size of LEDs
 
 Strips strips;
 PixelMap pixelMap;
-String ip = "localhost";
-int port = 6100;
 
 PeasyCam g_pCamera;
 PShape teatro_model;
 PShape tofsy_model;
-//ArtNetBroadcast broadcastReceiver;
 ArtNetMulticast multicast;
 
 void drawPlane() {
@@ -72,12 +72,10 @@ void setup() {
   pixelMap.finalize();
 
   // Receiver
-  //broadcastReceiver = new ArtNetBroadcast(pixelMap, ip, port, 0, pixelMap.columns * pixelMap.rows, true);
-  multicast = new ArtNetMulticast(pixelMap, strips, port, ip);
+  multicast = new ArtNetMulticast(pixelMap, strips, START_PORT, START_HOST);
   multicast.setListen(true);
   multicast.setRowsPerPacket(2);
   multicast.setup();
-  //multicast = new Multicast(pixelMap, new String[] { ip, ip }, new int[] { port, port + 1 }, true);
 }
 
 void pixelMapToStrips(PixelMap pixelMap, Strips strips) {
@@ -138,7 +136,6 @@ void draw() {
   shape(tofsy_model);
   popMatrix();
   
-  //broadcastReceiver.draw();
   multicast.draw();
   pixelMapToStrips(pixelMap, strips);
   

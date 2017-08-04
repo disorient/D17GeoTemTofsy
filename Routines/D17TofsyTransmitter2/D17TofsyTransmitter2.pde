@@ -2,15 +2,17 @@ import hypermedia.net.*;
 import moonpaper.*;
 import moonpaper.opcodes.*;
 
+// If set to "localhost" or "127.0.0.1", it will increment the port.
+// Otherwise it will incrment the IP.
+public static final String START_HOST = "localhost";
+public static final int START_PORT = 6454;
+
 // Turn on frame capture
 boolean captureFrames = false;
 String captureFolder = "./frames/";
 
 // Broadcast
-//ArtNetBroadcast broadcast;
 ArtNetMulticast multicast;
-String ip = "localhost"; 
-int port = 6100;
 
 // Set FrameRate
 int fps = 60;        // Frames-per-second
@@ -53,10 +55,11 @@ void setup() {
   setupPixelMap();
 
   // Setup Broadcasting
-  //broadcast = new ArtNetBroadcast(pixelMap, ip, port);
-  //broadcast.pg = g;
-  multicast = new ArtNetMulticast(pixelMap, tofsy.strips, port, ip);
-  //multicast = new Multicast(pixelMap, new String[] { ip, ip }, new int[] { port, port + 1 });
+  if (START_HOST == "localhost" || START_HOST == "127.0.0.1") 
+    multicast = new ArtNetMulticast(pixelMap, tofsy.strips, START_PORT, START_HOST);
+  else
+    multicast = new ArtNetMulticast(pixelMap, tofsy.strips, START_HOST, START_PORT);
+    
   multicast.setRowsPerPacket(2);
   multicast.setPG(g);
   multicast.setup();
