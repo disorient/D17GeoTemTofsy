@@ -20,7 +20,7 @@ int port = 6100;
 PeasyCam g_pCamera;
 PShape teatro_model;
 PShape tofsy_model;
-BroadcastReceiver broadcastReceiver;
+ArtNetBroadcast broadcastReceiver;
 Multicast multicast;
 
 void drawPlane() {
@@ -72,8 +72,8 @@ void setup() {
   pixelMap.finalize();
 
   // Receiver
-  //broadcastReceiver = new BroadcastReceiver(this, pixelMap, ip, port);
-  multicast = new Multicast(pixelMap, strips, port, ip, true);
+  broadcastReceiver = new ArtNetBroadcast(pixelMap, ip, port, 0, pixelMap.columns * pixelMap.rows, true);
+  //multicast = new Multicast(pixelMap, strips, port, ip, true);
   //multicast = new Multicast(pixelMap, new String[] { ip, ip }, new int[] { port, port + 1 }, true);
 }
 
@@ -135,8 +135,8 @@ void draw() {
   shape(tofsy_model);
   popMatrix();
   
-  //broadcastReceiver.draw();
-  multicast.draw();
+  broadcastReceiver.draw();
+  //multicast.draw();
   pixelMapToStrips(pixelMap, strips);
   
   for (Strip strip : strips) {

@@ -9,6 +9,7 @@ int meter = 100;
 /***********************************************************************************************************************/
 
 public class Broadcast {
+  
   PixelMap pixelMap;
   String ip;
   int port;
@@ -29,7 +30,9 @@ public class Broadcast {
     this(pixelMap, ip, port, 0, pixelMap.columns * pixelMap.rows, false);
   }
   
-  public Broadcast(PixelMap pixelMap, String ip, int port, int offset, int size, boolean listen) {
+  public Broadcast(PixelMap pixelMap, String ip, int port, 
+                   int offset, int size, boolean listen) 
+  {
     this.pixelMap = pixelMap;
     this.ip = ip;
     this.port = port;
@@ -39,25 +42,34 @@ public class Broadcast {
 
     setup();
   }
-
-  protected void setup() {
-    bufferSize =  3 * nPixels + 1;
+  
+  protected void setupBuffer() {
+    bufferSize =  nPixels * 3 + 1;
     buffer = new byte[bufferSize];
-    pg = pixelMap.pg;
-
+  }
+  
+  protected void setupUDP() {
     if (isListening) {
       udp = new UDP(this, port);
       udp.setReceiveHandler("receive");
       udp.listen(true);
-      println("Broadcast listening on "+ this.ip + ":" + port + " offset="+offset + " size="+nPixels);
+      println("Broadcast listening on "+ this.ip + ":" + port + 
+              " offset="+offset + " size="+nPixels);
     }
     else {
       udp = new UDP(this);
       udp.listen(false);
-      println("Broadcast transmitting to " + this.ip + ":" + port + " offset="+offset + " size="+nPixels);
+      println("Broadcast transmitting to "+ this.ip + ":" + port + 
+              " offset="+offset + " size="+nPixels);
     }
     
     udp.log(false);
+  }
+
+  protected void setup() {
+    setupBuffer();
+    setupUDP();
+    pg = pixelMap.pg;
   }
   
   public void update() {
@@ -68,6 +80,7 @@ public class Broadcast {
     
     try {
       pg.loadPixels();
+      
       buffer[0] = 1;  // Header. Always 1.
   
       for (int i = 0; i < nPixels; i++) {
@@ -134,6 +147,107 @@ public class BroadcastReceiver extends Broadcast {
   public BroadcastReceiver(PixelMap pixelMap, String ip, int port) {
     super(pixelMap, ip, port, 0, pixelMap.columns * pixelMap.rows, true);
   }
+}
+
+/**
+ * Implements Art-Net on top of Broadcast.
+ *
+ * @author justin
+ * @version 1
+ **/
+public class ArtNetBroadcast extends Broadcast {
+  byte[] ARTNET_HEADER = { 'A', 'r', 't', '-', 'N', 'e', 't', 0, 0, 0x50, 0, 14 };
+  int rows;
+  int dataSize;
+  int packetSize;
+
+  public ArtNetBroadcast(PixelMap pixelMap, String ip, int port) {
+    this(pixelMap, ip, port, 0, pixelMap.columns * pixelMap.rows, false);
+  }
+  
+  public ArtNetBroadcast(PixelMap pixelMap, String ip, int port, 
+                        int offset, int size, boolean listen)
+  {
+    super(pixelMap, ip, port, offset, size, listen);
+    this.rows = size / pixelMap.columns;
+  }
+  
+  public void setHeader(int row) {
+    // Static header
+    System.arraycopy(ARTNET_HEADER, 0, buffer, 0, ARTNET_HEADER.length);
+    
+    // Sequence allows out of order transmission (1..255, 0 to disable)
+    buffer[12] = (byte)(frameCount % 254 + 1);
+    
+    // Physical port
+    buffer[13] = (byte)row;
+    
+    // Universe (0..32767, we only support 0..255)
+    buffer[14] = (byte)row;
+    buffer[15] = 0;
+    
+    // Size of data packet
+    buffer[16] = (byte)(dataSize >> 8);
+    buffer[17] = (byte)dataSize;    
+  }
+
+  protected void setupBuffer() {
+    dataSize = pixelMap.columns * 3;
+    
+    if (isListening) {
+      // Use the same +1 buffer so we can reuse draw
+      super.setupBuffer();
+      packetSize = dataSize + 18;
+    }
+    else {    
+      packetSize = bufferSize = dataSize + 18;
+      buffer = new byte[bufferSize];
+    }
+  }
+
+  public void update() {
+    if (isListening) {
+      println("Trying to update on a listening Broadcast.  You probably want draw().");
+      return;
+    }
+    
+    try {
+      pg.loadPixels();
+      
+      // Art-Net is one packet per strip (universe), so we'll do this by row/column
+      for (int row = 0; row<rows; row++) {
+        setHeader(row);
+        
+        for (int col = 0; col<pixelMap.columns; col++) {
+          int ofs = col * 3 + 18;
+          int c = pg.pixels[offset + (row * pixelMap.columns + col)];
+          
+          buffer[ofs] = byte((c >> 16) & 0xFF);     // Red 
+          buffer[ofs + 1] = byte((c >> 8) & 0xFF);  // Blue
+          buffer[ofs + 2] = byte(c & 0xFF);         // Green
+        }
+        
+        udp.send(buffer, ip, port);
+      }
+    }
+    catch (Exception e) {
+      println("frame: " + frameCount + "  Broadcast.update() frame dropped");
+      throw(e);
+    }
+  }
+
+  public void receive(byte[] data, String ip, int port) {
+    if (data.length != packetSize || data[0] != 65 || data[1] != 114 || data[2] != 116) {
+       System.out.println("rx " + str(data.length) + " != " + str(packetSize) + " or malformed header");
+       return;
+    }
+    
+    int row = (int)data[14];
+    int ofs = row * pixelMap.columns * 3 + 1;
+    int size = (int(data[16]) << 8) + int(data[17]); 
+    
+    System.arraycopy(data, 18, buffer, ofs, size);
+  }  
 }
 
 

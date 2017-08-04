@@ -21,7 +21,6 @@ class Drop extends DisplayableLEDs {
     }
     w = (bot-top)/2;
     y = top;
-    println(w);
   }
   
   void update() {
