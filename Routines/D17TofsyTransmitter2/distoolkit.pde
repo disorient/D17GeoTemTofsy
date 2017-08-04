@@ -22,26 +22,29 @@ public class Broadcast {
   boolean isListening = false;
 
   public Broadcast(Object broadcastReceiver, PixelMap pixelMap, String ip, int port) {
-    this(pixelMap, ip, port, 0, pixelMap.columns * pixelMap.rows);
+    this(pixelMap, ip, port);
     setup();
     println("No longer necessary to instantiate with broadcastReceiver.  Also, please call setup() explicitly.");
   }
   
   public Broadcast(PixelMap pixelMap, String ip, int port) {
-    this(pixelMap, ip, port, 0, pixelMap.columns * pixelMap.rows);
-  }
-  
-  public Broadcast(PixelMap pixelMap, String ip, int port, int offset, int size) 
-  {
     this.pixelMap = pixelMap;
     this.ip = ip;
     this.port = port;
-    this.offset = offset;
-    this.nPixels = size;
+    this.offset = 0;
+    this.nPixels = pixelMap.rows * pixelMap.columns;
   }
 
   public void setListen(boolean listen) {
     this.isListening = listen;
+  }
+  
+  public void setOffset(int offset) {
+    this.offset = offset;
+  }
+  
+  public void setSize(int size) {
+    this.nPixels = size;
   }
   
   protected void setupBuffer() {
@@ -146,7 +149,7 @@ public class BroadcastReceiver extends Broadcast {
   }
 
   public BroadcastReceiver(PixelMap pixelMap, String ip, int port) {
-    super(pixelMap, ip, port, 0, pixelMap.columns * pixelMap.rows);
+    super(pixelMap, ip, port);
     this.setListen(true);
     this.setup();
   }
@@ -165,14 +168,19 @@ public class ArtNetBroadcast extends Broadcast {
   int packetSize;
   int rowsPerPacket;
 
-  public ArtNetBroadcast(PixelMap pixelMap, String ip, int port, int offset, int size) {
-    super(pixelMap, ip, port, offset, size);
+  public ArtNetBroadcast(PixelMap pixelMap, String ip, int port) {
+    super(pixelMap, ip, port);
     this.rowsPerPacket = 1;
-    this.rows = size / pixelMap.columns;
+    this.rows = this.nPixels / pixelMap.columns;
   }
   
   public void setRowsPerPacket(int rowsPerPacket) {
     this.rowsPerPacket = rowsPerPacket;
+  }
+  
+  public void setSize(int size) {
+    this.nPixels = size;
+    this.rows = size / pixelMap.columns;
   }
   
   public void setHeader(int row) {
@@ -337,6 +345,10 @@ public class Multicast {
     else {
       this.setupByStrips();
     }
+    
+    for (Broadcast broadcast : broadcasters) {
+      broadcast.setup();
+    }
   }
   
   protected void setupByHosts() {
@@ -365,7 +377,6 @@ public class Multicast {
         
     for (Strip strip : strips) {
       if (strip.controller != lastController) {
-        print("Multicast " + lastController + " : ");
         broadcasters[lastController] = getBroadcast(pixelMap, hosts[hostNo], ports[hostNo], lastOffset, size);
 
         size = 0;
@@ -377,16 +388,16 @@ public class Multicast {
       offset += strip.nLights;
     }
     
-    print("Multicast " + lastController + " : ");
     broadcasters[lastController] = getBroadcast(pixelMap, hosts[hostNo], ports[hostNo], lastOffset, size);
   }
   
   protected Broadcast getBroadcast(PixelMap pixelMap, String host, int port, int offset, int size) {
-    Broadcast b = new Broadcast(pixelMap, host, port, offset, size);
+    Broadcast b = new Broadcast(pixelMap, host, port);
+    b.setOffset(offset);
+    b.setSize(size);
     b.setListen(isListening);
     b.pg = pg;
     
-    b.setup();
     return b;
   }
   
@@ -431,10 +442,12 @@ public class ArtNetMulticast extends Multicast {
   }
   
   protected Broadcast getBroadcast(PixelMap pixelMap, String host, int port, int offset, int size) {
-    ArtNetBroadcast b = new ArtNetBroadcast(pixelMap, host, port, offset, size);
+    ArtNetBroadcast b = new ArtNetBroadcast(pixelMap, host, port);
+    b.setOffset(offset);
+    b.setSize(size);
     b.setListen(isListening);
     b.setRowsPerPacket(rowsPerPacket);
-    b.setup();
+
     return b;
   }
 }
