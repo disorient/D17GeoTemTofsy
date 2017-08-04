@@ -163,15 +163,18 @@ public class BroadcastReceiver extends Broadcast {
  **/
 public class ArtNetBroadcast extends Broadcast {
   byte[] ARTNET_HEADER = { 'A', 'r', 't', '-', 'N', 'e', 't', 0, 0, 0x50, 0, 14 };
+  byte[] ARTNET_SYNC = { 'A', 'r', 't', '-', 'N', 'e', 't', 0, 0, 0x52, 0, 14, 0, 0 };
   int rows;
   int dataSize;
   int packetSize;
   int rowsPerPacket;
+  boolean gotSync;
 
   public ArtNetBroadcast(PixelMap pixelMap, String ip, int port) {
     super(pixelMap, ip, port);
     this.rowsPerPacket = 1;
     this.rows = this.nPixels / pixelMap.columns;
+    this.gotSync = false;
   }
   
   public void setRowsPerPacket(int rowsPerPacket) {
@@ -200,6 +203,17 @@ public class ArtNetBroadcast extends Broadcast {
     // Size of data packet
     buffer[16] = (byte)(dataSize >> 8);
     buffer[17] = (byte)dataSize;    
+  }
+  
+  public void setSyncPacket() {
+    // Static header
+    System.arraycopy(ARTNET_HEADER, 0, buffer, 0, ARTNET_HEADER.length);    
+    
+    buffer[9] = 0x52;
+    
+    for (int i=12; i<buffer.length; i++) {
+      buffer[i] = 0;
+    }
   }
 
   protected void setupBuffer() {
@@ -243,6 +257,8 @@ public class ArtNetBroadcast extends Broadcast {
           udp.send(buffer, ip, port);
         }
       }
+      
+      udp.send(ARTNET_SYNC, ip, port);
     }
     catch (Exception e) {
       println("frame: " + frameCount + "  Broadcast.update() frame dropped");
@@ -256,12 +272,25 @@ public class ArtNetBroadcast extends Broadcast {
        return;
     }
     
-    int row = (int)data[14];
-    int ofs = row * rowsPerPacket * pixelMap.columns * 3 + 1;
-    int size = (int(data[16]) << 8) + int(data[17]); 
-    
-    System.arraycopy(data, 18, buffer, ofs, size);
-  }  
+    if (data[9] == 0x52) {
+      gotSync = true;
+    }
+    else {
+      int row = (int)data[14];
+      int ofs = row * rowsPerPacket * pixelMap.columns * 3 + 1;
+      int size = (int(data[16]) << 8) + int(data[17]);
+      
+      System.arraycopy(data, 18, buffer, ofs, size);
+    }
+  }
+  
+  public void draw() {
+    // No need to redraw if we haven't received sync.
+    if (gotSync) {
+      gotSync = false;
+      super.draw();
+    }
+  }
 }
 
 
