@@ -16,7 +16,13 @@ void createSequence() {
   mp.seq(new PatchSet(cel0.getTransparency(), 0.0));
   mp.seq(new Line(5 * fps, cel0.getTransparency(), 255));
 
-  // Box
+  // Test
+  TestPattern test = new TestPattern(pixelMap, allStructures);
+  mp.seq(new PatchSet(test.transparency, 255.0));
+  mp.seq(new PushCel(cel0, test));
+  mp.seq(new Wait(5 * fpm));
+
+  // Drop
   Drop drop = new Drop(pixelMap, allStructures);
   mp.seq(new PatchSet(drop.transparency, 255.0));
   mp.seq(new PushCel(cel0, drop));

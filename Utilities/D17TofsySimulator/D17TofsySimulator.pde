@@ -20,6 +20,8 @@ int port = 6100;
 PeasyCam g_pCamera;
 PShape teatro_model;
 PShape tofsy_model;
+BroadcastReceiver broadcastReceiver;
+Multicast multicast;
 
 void drawPlane() {
   float corner = 10000;
@@ -61,7 +63,7 @@ void setup() {
   tofsy_model = loadShape(TOFSY_MODEL);
   invertShape(tofsy_model);
   Strips tofsy_strips = new Strips();
-  loadStrips(tofsy_strips, TOFSY_JSON);
+  strips.loadFromJSON(TOFSY_JSON);
   strips.addAll(tofsy_strips);
 
   // Generate PixelMap
@@ -70,7 +72,9 @@ void setup() {
   pixelMap.finalize();
 
   // Receiver
-  broadcastReceiver = new BroadcastReceiver(this, pixelMap, ip, port);
+  //broadcastReceiver = new BroadcastReceiver(this, pixelMap, ip, port);
+  multicast = new Multicast(pixelMap, strips, port, ip, true);
+  //multicast = new Multicast(pixelMap, new String[] { ip, ip }, new int[] { port, port + 1 }, true);
 }
 
 void pixelMapToStrips(PixelMap pixelMap, Strips strips) {
@@ -131,7 +135,8 @@ void draw() {
   shape(tofsy_model);
   popMatrix();
   
-  broadcastReceiver.draw();
+  //broadcastReceiver.draw();
+  multicast.draw();
   pixelMapToStrips(pixelMap, strips);
   
   for (Strip strip : strips) {
