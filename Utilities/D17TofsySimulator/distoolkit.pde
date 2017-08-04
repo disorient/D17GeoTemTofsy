@@ -22,25 +22,26 @@ public class Broadcast {
   boolean isListening = false;
 
   public Broadcast(Object broadcastReceiver, PixelMap pixelMap, String ip, int port) {
-    this(pixelMap, ip, port, 0, pixelMap.columns * pixelMap.rows, false);
-    println("No longer necessary to instantiate with broadcastReceiver");
+    this(pixelMap, ip, port, 0, pixelMap.columns * pixelMap.rows);
+    setup();
+    println("No longer necessary to instantiate with broadcastReceiver.  Also, please call setup() explicitly.");
   }
   
   public Broadcast(PixelMap pixelMap, String ip, int port) {
-    this(pixelMap, ip, port, 0, pixelMap.columns * pixelMap.rows, false);
+    this(pixelMap, ip, port, 0, pixelMap.columns * pixelMap.rows);
   }
   
-  public Broadcast(PixelMap pixelMap, String ip, int port, 
-                   int offset, int size, boolean listen) 
+  public Broadcast(PixelMap pixelMap, String ip, int port, int offset, int size) 
   {
     this.pixelMap = pixelMap;
     this.ip = ip;
     this.port = port;
     this.offset = offset;
     this.nPixels = size;
-    this.isListening = listen;
+  }
 
-    setup();
+  public void setListen(boolean listen) {
+    this.isListening = listen;
   }
   
   protected void setupBuffer() {
@@ -66,7 +67,7 @@ public class Broadcast {
     udp.log(false);
   }
 
-  protected void setup() {
+  public void setup() {
     setupBuffer();
     setupUDP();
     pg = pixelMap.pg;
@@ -141,11 +142,13 @@ public class BroadcastReceiver extends Broadcast {
   
   public BroadcastReceiver(Object broadcastReceiver, PixelMap pixelMap, String ip, int port) {
     this(pixelMap, ip, port);
-    println("No longer necessary to instantiate with broadcastReceiver");    
+    println("BroadcastReceiver is deprecated.  Please use Broadcast and setListen(true).");    
   }
 
   public BroadcastReceiver(PixelMap pixelMap, String ip, int port) {
-    super(pixelMap, ip, port, 0, pixelMap.columns * pixelMap.rows, true);
+    super(pixelMap, ip, port, 0, pixelMap.columns * pixelMap.rows);
+    this.setListen(true);
+    this.setup();
   }
 }
 
@@ -160,16 +163,16 @@ public class ArtNetBroadcast extends Broadcast {
   int rows;
   int dataSize;
   int packetSize;
+  int rowsPerPacket;
 
-  public ArtNetBroadcast(PixelMap pixelMap, String ip, int port) {
-    this(pixelMap, ip, port, 0, pixelMap.columns * pixelMap.rows, false);
+  public ArtNetBroadcast(PixelMap pixelMap, String ip, int port, int offset, int size) {
+    super(pixelMap, ip, port, offset, size);
+    this.rowsPerPacket = 1;
+    this.rows = size / pixelMap.columns;
   }
   
-  public ArtNetBroadcast(PixelMap pixelMap, String ip, int port, 
-                        int offset, int size, boolean listen)
-  {
-    super(pixelMap, ip, port, offset, size, listen);
-    this.rows = size / pixelMap.columns;
+  public void setRowsPerPacket(int rowsPerPacket) {
+    this.rowsPerPacket = rowsPerPacket;
   }
   
   public void setHeader(int row) {
@@ -180,10 +183,10 @@ public class ArtNetBroadcast extends Broadcast {
     buffer[12] = (byte)(frameCount % 254 + 1);
     
     // Physical port
-    buffer[13] = (byte)row;
+    buffer[13] = (byte)(row / rowsPerPacket);
     
     // Universe (0..32767, we only support 0..255)
-    buffer[14] = (byte)row;
+    buffer[14] = (byte)(row / rowsPerPacket);
     buffer[15] = 0;
     
     // Size of data packet
@@ -192,7 +195,7 @@ public class ArtNetBroadcast extends Broadcast {
   }
 
   protected void setupBuffer() {
-    dataSize = pixelMap.columns * 3;
+    dataSize = rowsPerPacket * pixelMap.columns * 3;
     
     if (isListening) {
       // Use the same +1 buffer so we can reuse draw
@@ -216,10 +219,11 @@ public class ArtNetBroadcast extends Broadcast {
       
       // Art-Net is one packet per strip (universe), so we'll do this by row/column
       for (int row = 0; row<rows; row++) {
-        setHeader(row);
+        if (row % rowsPerPacket == 0)
+          setHeader(row);
         
         for (int col = 0; col<pixelMap.columns; col++) {
-          int ofs = col * 3 + 18;
+          int ofs = (row % rowsPerPacket * pixelMap.columns + col) * 3 + 18;
           int c = pg.pixels[offset + (row * pixelMap.columns + col)];
           
           buffer[ofs] = byte((c >> 16) & 0xFF);     // Red 
@@ -227,7 +231,8 @@ public class ArtNetBroadcast extends Broadcast {
           buffer[ofs + 2] = byte(c & 0xFF);         // Green
         }
         
-        udp.send(buffer, ip, port);
+        if ((row + 1) % rowsPerPacket == 0)
+          udp.send(buffer, ip, port);
       }
     }
     catch (Exception e) {
@@ -243,10 +248,9 @@ public class ArtNetBroadcast extends Broadcast {
     }
     
     int row = (int)data[14];
-    int ofs = row * pixelMap.columns * 3 + 1;
+    int ofs = row * rowsPerPacket * pixelMap.columns * 3 + 1;
     int size = (int(data[16]) << 8) + int(data[17]); 
     
-    println(row);
     System.arraycopy(data, 18, buffer, ofs, size);
   }  
 }
@@ -257,18 +261,84 @@ public class ArtNetBroadcast extends Broadcast {
 /**
  * Use this class when you're using multiple receivers for the same installation.
  *
- * @version 1
+ * @version 1.1
  * @author justin
  */
 public class Multicast {
   Broadcast[] broadcasters;
+  PixelMap pixelMap;
+  Strips strips;
+  String[] hosts;
+  int[] ports;
+  boolean isListening;
+  PGraphics pg = null;
   
   /**
    * Create a Multicast where the number of strips (rows in PixelMap) are evenly divisable
    * by the number of hosts/ports specified.  If all ports on all controllers are used this
    * should hold true.
    */
-  public Multicast(PixelMap pixelMap, String[] hosts, int[] ports, boolean listen) {
+  public Multicast(PixelMap pixelMap, String[] hosts, int[] ports) {
+    this.pixelMap = pixelMap;
+    this.strips = null;
+    this.hosts = hosts;
+    this.ports = ports;
+    this.broadcasters = new Broadcast[hosts.length];
+    this.pg = pixelMap.pg;
+  }
+
+  public Multicast(PixelMap pixelMap, Strips strips, String start_host, int port) {
+    int controllers = strips.getControllerCount();
+    
+    this.pixelMap = pixelMap;
+    this.strips = strips;
+    this.hosts = new String[controllers];
+    this.ports = new int[controllers];
+    this.broadcasters = new Broadcast[controllers];
+    this.pg = pixelMap.pg;
+    
+    for (int i=0; i<controllers; i++) {
+      this.hosts[i] = start_host;
+      this.ports[i] = port;
+      start_host = nextHost(start_host);
+    }    
+  }
+  
+  public Multicast(PixelMap pixelMap, Strips strips, int start_port, String host) {
+    int controllers = strips.getControllerCount();
+    
+    this.pixelMap = pixelMap;
+    this.strips = strips;
+    this.hosts = new String[controllers];
+    this.ports = new int[controllers];
+    this.broadcasters = new Broadcast[controllers];
+    this.pg = pixelMap.pg;
+
+    for (int i=0; i<controllers; i++) {
+      this.hosts[i] = host;
+      this.ports[i] = start_port;
+      start_port += 1;
+    }    
+  }
+  
+  public void setListen(boolean isListening) {
+    this.isListening = isListening;
+  }
+  
+  public void setPG(PGraphics pg) {
+    this.pg = pg;
+  }
+
+  public void setup() {
+    if (strips == null) {
+      this.setupByHosts();
+    }
+    else {
+      this.setupByStrips();
+    }
+  }
+  
+  protected void setupByHosts() {
     if (pixelMap.rows % hosts.length > 0) {
       throw new RuntimeException("The number of strips defined doesn't divide evenly by the number of controllers specified."); 
     }
@@ -277,39 +347,28 @@ public class Multicast {
       throw new RuntimeException("Mismatched number of hosts and ports");
     }
     
-    broadcasters = new Broadcast[hosts.length];
     int size = pixelMap.rows / hosts.length * pixelMap.columns;
     int offset = 0;
     for (int i=0; i<broadcasters.length; i++) {
-      broadcasters[i] = new Broadcast(pixelMap, hosts[i], ports[i], offset, size, listen);
+      broadcasters[i] = getBroadcast(pixelMap, hosts[i], ports[i], offset, size);
       offset += size;
     }
   }
   
-  public Multicast(PixelMap pixelMap, String[] hosts, int[] ports) {
-    this(pixelMap, hosts, ports, false);
-  } 
-  
-  /**
-   * Create a Multicast by looking at the strips themselves.  Specify a starting host and port and
-   * it will increment from there.  This allows for gaps where a controller isn't using all its'
-   * ports.  This increments host IPs in the most basic way possible, no checks are made.
-   */
-  public Multicast(PixelMap pixelMap, Strips strips, String start_host, int port, boolean listen) {
-    int controllers = strips.getControllerCount();
-    int lastController = 0;
-    String host = start_host;
+  protected void setupByStrips() {
+    int lastController = strips.get(0).controller;;
+    int hostNo = 0;
     int lastOffset = 0;
     int offset = 0;
     int size = 0;
-    
-    broadcasters = new Broadcast[controllers];
-    
+        
     for (Strip strip : strips) {
       if (strip.controller != lastController) {
-        broadcasters[strip.controller] = new Broadcast(pixelMap, host, port, lastOffset, size, listen);
+        print("Multicast " + lastController + " : ");
+        broadcasters[lastController] = getBroadcast(pixelMap, hosts[hostNo], ports[hostNo], lastOffset, size);
+
         size = 0;
-        host = nextHost(host);
+        hostNo++;
         lastController = strip.controller;
         lastOffset = offset;
       }
@@ -317,13 +376,19 @@ public class Multicast {
       offset += strip.nLights;
     }
     
-    broadcasters[lastController] = new Broadcast(pixelMap, host, port, lastOffset, size, listen);
+    print("Multicast " + lastController + " : ");
+    broadcasters[lastController] = getBroadcast(pixelMap, hosts[hostNo], ports[hostNo], lastOffset, size);
   }
   
-  public Multicast(PixelMap pixelMap, Strips strips, String start_host, int port) {
-    this(pixelMap, strips, start_host, port, false);
+  protected Broadcast getBroadcast(PixelMap pixelMap, String host, int port, int offset, int size) {
+    Broadcast b = new Broadcast(pixelMap, host, port, offset, size);
+    b.setListen(isListening);
+    b.pg = pg;
+    
+    b.setup();
+    return b;
   }
-
+  
   /**
    * Increments the last byte of an IP without doing any checks, DNS lookups, or overflows 
    */
@@ -332,42 +397,6 @@ public class Multicast {
     parts[3] = (int(parts[3]) + 1) + "";
     
     return String.join(".", parts);
-  }
-  
-  /**
-   * Create a Multicast by looking at the strips themselves.  Specify a starting port and host and
-   * it will increment from there.  This allows for gaps where a controller isn't using all its'
-   * ports.  This increments port numbers, good for testing against localhost.
-   */
-  public Multicast(PixelMap pixelMap, Strips strips, int start_port, String host, boolean listen) {
-    // TODO I don't love duplicating code here, but other than doing some sort of callback
-    // to increment host or port I don't know a good way to keep this DRY.
-    int controllers = strips.getControllerCount();
-    int lastController = 0;
-    int lastOffset = 0;
-    int offset = 0;
-    int size = 0;
-    int port = start_port;
-    
-    broadcasters = new Broadcast[controllers];
-    
-    for (Strip strip : strips) {
-      if (strip.controller != lastController) {
-        broadcasters[lastController] = new Broadcast(pixelMap, host, port, lastOffset, size, listen);
-        size = 0;
-        port += 1;
-        lastController = strip.controller;
-        lastOffset = offset;
-      }
-      size += strip.nLights;
-      offset += strip.nLights;
-    }
-    
-    broadcasters[lastController] = new Broadcast(pixelMap, host, port, lastOffset, size, listen);
-  }
-  
-  public Multicast(PixelMap pixelMap, Strips strips, int start_port, String host) {
-    this(pixelMap, strips, start_port, host, false);
   }
   
   public void update() {
@@ -381,14 +410,33 @@ public class Multicast {
       broadcast.draw();
     }
   }
-  
-  public void setPG(PGraphics pg) {
-    for (Broadcast broadcast : broadcasters) {
-      broadcast.pg = pg;
-    }
-  }
 }
 
+public class ArtNetMulticast extends Multicast {
+  int rowsPerPacket = 1;
+  
+  public ArtNetMulticast(PixelMap pixelMap, String[] hosts, int[] ports) {
+    super(pixelMap, hosts, ports);
+  }
+  public ArtNetMulticast(PixelMap pixelMap, Strips strips, String start_host, int port) {
+    super(pixelMap, strips, start_host, port);
+  }
+  public ArtNetMulticast(PixelMap pixelMap, Strips strips, int start_port, String host) {
+    super(pixelMap, strips, start_port, host);
+  }
+  
+  public void setRowsPerPacket(int rowsPerPacket) {
+    this.rowsPerPacket = rowsPerPacket;
+  }
+  
+  protected Broadcast getBroadcast(PixelMap pixelMap, String host, int port, int offset, int size) {
+    ArtNetBroadcast b = new ArtNetBroadcast(pixelMap, host, port, offset, size);
+    b.setListen(isListening);
+    b.setRowsPerPacket(rowsPerPacket);
+    b.setup();
+    return b;
+  }
+}
 
 /***********************************************************************************************************************/
 

@@ -7,8 +7,8 @@ boolean captureFrames = false;
 String captureFolder = "./frames/";
 
 // Broadcast
-ArtNetBroadcast broadcast;
-Multicast multicast;
+//ArtNetBroadcast broadcast;
+ArtNetMulticast multicast;
 String ip = "localhost"; 
 int port = 6100;
 
@@ -53,11 +53,13 @@ void setup() {
   setupPixelMap();
 
   // Setup Broadcasting
-  broadcast = new ArtNetBroadcast(pixelMap, ip, port);
-  broadcast.pg = g;
-  //multicast = new Multicast(pixelMap, tofsy.strips, port, ip);
+  //broadcast = new ArtNetBroadcast(pixelMap, ip, port);
+  //broadcast.pg = g;
+  multicast = new ArtNetMulticast(pixelMap, tofsy.strips, port, ip);
   //multicast = new Multicast(pixelMap, new String[] { ip, ip }, new int[] { port, port + 1 });
-  //multicast.setPG(g);
+  multicast.setRowsPerPacket(2);
+  multicast.setPG(g);
+  multicast.setup();
 
   // Create sequence
   createSequence();
@@ -76,6 +78,6 @@ void draw() {
   }
 
   // Broadcast to simulator
-  broadcast.update();
-  //multicast.update();
+  //broadcast.update();
+  multicast.update();
 }
