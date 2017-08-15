@@ -56,7 +56,7 @@ void setup() {
   setupPixelMap();
 
   // Setup Broadcasting
-  if (START_HOST == "localhost" || START_HOST == "127.0.0.1") 
+  if (START_HOST == "localhost" || START_HOST == "127.0.0.1")
     multicast = new ArtNetMulticast(pixelMap, tofsy.strips, START_PORT, START_HOST);
   else
     multicast = new ArtNetMulticast(pixelMap, tofsy.strips, START_HOST, START_PORT);
@@ -83,6 +83,5 @@ void draw() {
   }
 
   // Broadcast to simulator
-  //broadcast.update();
   multicast.update();
 }

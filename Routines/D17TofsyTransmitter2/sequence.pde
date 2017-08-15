@@ -5,16 +5,36 @@ void createSequence() {
 
   mp = new Moonpaper(this);
   Cel cel0 = mp.createCel(width, height);
+  Cel cel1 = mp.createCel(width, height);
 
 
   // Start of sequence
   mp.seq(new ClearCels());
   mp.seq(new PushCel(cel0, pixelMap));
   mp.seq(new PatchSet(cel0.getTransparency(), 0.0));
+  mp.seq(new PushCel(cel1, pixelMap));
+  mp.seq(new PatchSet(cel1.getTransparency(), 0.0));
 
   // Fade in cel
   mp.seq(new PatchSet(cel0.getTransparency(), 0.0));
   mp.seq(new Line(5 * fps, cel0.getTransparency(), 255));
+
+
+  // Life
+  Life life = new Life(pixelMap, allStructures);
+  mp.seq(new PatchSet(life.transparency, 255.0));
+  mp.seq(new PushCel(cel0, life));
+  mp.seq(new Wait(1 * fpm));
+
+  //// Drop
+  Drop drop = new Drop(pixelMap, allStructures);
+  mp.seq(new PatchSet(drop.transparency, 255.0));
+  mp.seq(new PushCel(cel1, drop));
+  mp.seq(new CrossFade(fpm, cel1, cel0));
+  
+  mp.seq(new Wait(2 * fpm));
+  
+  
 
   // Test
   //TestPattern test = new TestPattern(pixelMap, allStructures);
@@ -28,17 +48,7 @@ void createSequence() {
   //mp.seq(new PushCel(cel0, box));
   //mp.seq(new Wait(5 * fpm));
 
-  // Life
-  //Life life = new Life(pixelMap, allStructures);
-  //mp.seq(new PatchSet(life.transparency, 255.0));
-  //mp.seq(new PushCel(cel0, life));
-  //mp.seq(new Wait(5 * fpm));
 
-  //// Drop
-  //Drop drop = new Drop(pixelMap, allStructures);
-  //mp.seq(new PatchSet(drop.transparency, 255.0));
-  //mp.seq(new PushCel(cel0, drop));
-  //mp.seq(new Wait(5 * fpm));
   
   // Plasma
   Plasma defaultPlasma = new Plasma(pixelMap, allStructures);
