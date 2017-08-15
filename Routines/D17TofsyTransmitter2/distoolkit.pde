@@ -435,6 +435,12 @@ public class Multicast {
    */
   protected String nextHost(String host) {
     String[] parts = host.split("\\.");
+    
+    if(parts.length != 4) {
+      println("host IP address <" + host + "> not valid, please fix. Address not incremented, output will be broken");
+      return host;
+    }
+    
     parts[3] = (int(parts[3]) + 1) + "";
     
     return String.join(".", parts);
