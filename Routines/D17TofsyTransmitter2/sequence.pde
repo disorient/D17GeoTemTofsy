@@ -17,22 +17,35 @@ void createSequence() {
   mp.seq(new Line(5 * fps, cel0.getTransparency(), 255));
 
   // Test
-  TestPattern test = new TestPattern(pixelMap, allStructures);
-  mp.seq(new PatchSet(test.transparency, 255.0));
-  mp.seq(new PushCel(cel0, test));
-  mp.seq(new Wait(5 * fpm));
+  //TestPattern test = new TestPattern(pixelMap, allStructures);
+  //mp.seq(new PatchSet(test.transparency, 255.0));
+  //mp.seq(new PushCel(cel0, test));
+  //mp.seq(new Wait(5 * fpm));
 
-  // Drop
-  Drop drop = new Drop(pixelMap, allStructures);
-  mp.seq(new PatchSet(drop.transparency, 255.0));
-  mp.seq(new PushCel(cel0, drop));
-  mp.seq(new Wait(5 * fpm));
+  // Box
+  //Box box = new Box(pixelMap, allStructures);
+  //mp.seq(new PatchSet(box.transparency, 255.0));
+  //mp.seq(new PushCel(cel0, box));
+  //mp.seq(new Wait(5 * fpm));
+
+  // Life
+  //Life life = new Life(pixelMap, allStructures);
+  //mp.seq(new PatchSet(life.transparency, 255.0));
+  //mp.seq(new PushCel(cel0, life));
+  //mp.seq(new Wait(5 * fpm));
+
+  //// Drop
+  //Drop drop = new Drop(pixelMap, allStructures);
+  //mp.seq(new PatchSet(drop.transparency, 255.0));
+  //mp.seq(new PushCel(cel0, drop));
+  //mp.seq(new Wait(5 * fpm));
   
   // Plasma
   Plasma defaultPlasma = new Plasma(pixelMap, allStructures);
   mp.seq(new PatchSet(defaultPlasma.transparency, 255.0));
   mp.seq(new PushCel(cel0, defaultPlasma));
-  
+  mp.seq(new Wait(5 * fpm));
+
   // Hold
 //  mp.seq(new Wait(1 * fpm));
   mp.seq(new Wait(5 * fps));

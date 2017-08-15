@@ -10,7 +10,7 @@ public static final String TEATRO_MODEL = "../../Data/teatro.obj";
 public static final String TOFSY_MODEL = "../../Data/tofsy.obj";
 public static final String TOFSY_JSON = "../../Data/tofsy.json";
 
-public static final String START_HOST = "localhost";
+public static final String START_HOST = "10.11.12.2";
 public static final int START_PORT = 6454;
 
 float lightSize = 4;  // Size of LEDs
@@ -72,7 +72,10 @@ void setup() {
   pixelMap.finalize();
 
   // Receiver
-  multicast = new ArtNetMulticast(pixelMap, strips, START_PORT, START_HOST);
+  if (START_HOST == "localhost" || START_HOST == "127.0.0.1") 
+    multicast = new ArtNetMulticast(pixelMap, strips, START_PORT, START_HOST);
+  else
+    multicast = new ArtNetMulticast(pixelMap, strips, START_HOST, START_PORT);
   multicast.setListen(true);
   multicast.setRowsPerPacket(2);
   multicast.setup();

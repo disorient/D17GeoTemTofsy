@@ -1,7 +1,20 @@
+int TEMP_X = 0;
+int TEMP_Y = 0;
+
+void keyPressed() {
+  if (keyCode == UP) {
+    TEMP_Y += 10;
+  }
+  else if (keyCode == DOWN) {
+    TEMP_Y -= 10;
+  }
+  println(TEMP_Y);
+}
+
 class Box extends DisplayableLEDs {
   PVector v1 = new PVector(100000,100000,100000);
   PVector v2 = new PVector(-100000,-100000,-100000);
-  float size = 0.25;
+  float size = 0.15;
   float r = 0;
   PVector v = new PVector(0,0,0);
   PGraphics rg;
@@ -34,8 +47,10 @@ class Box extends DisplayableLEDs {
   void update() {
     rg.pushMatrix();
     r += Math.PI / 100;
-    rg.translate((v2.x-v1.x)/2,(v2.y-v1.y)/2,0);
-    rg.rotateZ(r);
+            rg.translate(TEMP_Y,0,0);
+
+    rg.rotateX(r);
+
     
     for (LED led : leds) {
       v.x = rg.modelX(led.position.x, led.position.y, led.position.z);

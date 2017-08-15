@@ -54,7 +54,7 @@ public class Broadcast {
   
   protected void setupUDP() {
     if (isListening) {
-      udp = new UDP(this, port);
+      udp = new UDP(this, port, ip);
       udp.setReceiveHandler("receive");
       udp.listen(true);
       println("Broadcast listening on "+ this.ip + ":" + port + 
@@ -434,7 +434,7 @@ public class Multicast {
    * Increments the last byte of an IP without doing any checks, DNS lookups, or overflows 
    */
   protected String nextHost(String host) {
-    String[] parts = host.split(".");
+    String[] parts = host.split("\\.");
     parts[3] = (int(parts[3]) + 1) + "";
     
     return String.join(".", parts);
